@@ -1,0 +1,40 @@
+name: Build Debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - claude/cloud-android-build-Cwuha
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HUDDLDOverlaySpike-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+          if-no-files-found: error
