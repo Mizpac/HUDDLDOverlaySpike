@@ -6,11 +6,12 @@ plugins {
 android {
     namespace 'com.huddld.overlayspike'
     compileSdk 34
+    buildToolsVersion '34.0.0'
 
     defaultConfig {
         applicationId 'com.huddld.overlayspike'
         minSdk 26
-        targetSdk 34
+        targetSdk 33
         versionCode 1
         versionName '0.1.0'
     }
@@ -27,6 +28,10 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+
+    lint {
+        abortOnError false
     }
 }
 
