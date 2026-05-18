@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,20 +42,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LOG_B64=$(tail -300 /tmp/build.log | base64 -w 0 || echo "bm8gbG9n")
-          EXISTING_SHA=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+          LOG_B64=$(tail -300 /tmp/build.log 2>/dev/null | base64 -w 0)
+          [ -z "$LOG_B64" ] && LOG_B64=$(echo "empty log" | base64 -w 0)
+          EXISTING_SHA=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/contents/ci-build-error.txt?ref=${{ github.ref_name }}" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
+            | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('sha',''))" 2>/dev/null || echo "")
           if [ -n "$EXISTING_SHA" ]; then
-            PAYLOAD="{\"message\":\"ci: error log\",\"content\":\"$LOG_B64\",\"sha\":\"$EXISTING_SHA\",\"branch\":\"${{ github.ref_name }}\"}"
+            SHA_FIELD=",\"sha\":\"$EXISTING_SHA\""
           else
-            PAYLOAD="{\"message\":\"ci: error log\",\"content\":\"$LOG_B64\",\"branch\":\"${{ github.ref_name }}\"}"
+            SHA_FIELD=""
           fi
-          curl -sf -X PUT \
+          HTTP=$(curl -s -w "%{http_code}" -o /tmp/api_response.json -X PUT \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
             "https://api.github.com/repos/${{ github.repository }}/contents/ci-build-error.txt" \
-            -d "$PAYLOAD" | python3 -c "import sys,json; r=json.load(sys.stdin); print('committed:', r.get('content',{}).get('sha','?')[:8])"
+            -d "{\"message\":\"ci: error log\",\"content\":\"$LOG_B64\",\"branch\":\"${{ github.ref_name }}\"$SHA_FIELD}")
+          echo "HTTP status: $HTTP"
+          cat /tmp/api_response.json | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('message', r.get('content',{}).get('sha','ok')[:8] if isinstance(r.get('content'),dict) else 'ok'))" 2>/dev/null || true
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
