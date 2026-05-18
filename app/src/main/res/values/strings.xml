@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">HUDDLD Overlay</string>
+    <string name="accessibility_service_description">HUDDLD reads visible Uber Driver offer text to help you decide whether to accept. It never taps or interacts with Uber Driver.</string>
+</resources>
