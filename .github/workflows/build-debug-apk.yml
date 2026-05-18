@@ -24,26 +24,35 @@ jobs:
           wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /opt/gradle-dist
           ln -sf /opt/gradle-dist/gradle-8.7/bin/gradle /usr/local/bin/gradle
-          which gradle
-          gradle --version
+          which gradle && gradle --version
 
       - name: Build debug APK
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle assembleDebug --no-daemon --stacktrace > /tmp/build.log 2>&1 || {
-            cat /tmp/build.log
-            exit 1
-          }
+          gradle assembleDebug --no-daemon --stacktrace > /tmp/build.log 2>&1
+          RESULT=$?
+          cat /tmp/build.log
+          exit $RESULT
 
-      - name: Push build log on failure
+      - name: Save error log to repo via API
         if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp /tmp/build.log ci-build-error.txt 2>/dev/null || echo "no log captured" > ci-build-error.txt
-          git config user.email "ci@github.com"
-          git config user.name "CI"
-          git add ci-build-error.txt
-          git commit -m "ci: build error log [skip ci]" || true
-          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:${{ github.ref_name }} || true
+          LOG_B64=$(tail -300 /tmp/build.log | base64 -w 0 || echo "bm8gbG9n")
+          EXISTING_SHA=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/contents/ci-build-error.txt?ref=${{ github.ref_name }}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
+          if [ -n "$EXISTING_SHA" ]; then
+            PAYLOAD="{\"message\":\"ci: error log\",\"content\":\"$LOG_B64\",\"sha\":\"$EXISTING_SHA\",\"branch\":\"${{ github.ref_name }}\"}"
+          else
+            PAYLOAD="{\"message\":\"ci: error log\",\"content\":\"$LOG_B64\",\"branch\":\"${{ github.ref_name }}\"}"
+          fi
+          curl -sf -X PUT \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ github.repository }}/contents/ci-build-error.txt" \
+            -d "$PAYLOAD" | python3 -c "import sys,json; r=json.load(sys.stdin); print('committed:', r.get('content',{}).get('sha','?')[:8])"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
