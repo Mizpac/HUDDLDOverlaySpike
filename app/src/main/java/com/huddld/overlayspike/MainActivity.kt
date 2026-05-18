@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             textSize = 11f
             typeface = android.graphics.Typeface.MONOSPACE
             setTextColor(android.graphics.Color.WHITE)
-            isTextSelectable = true
+            setTextIsSelectable(true)
         }
 
         scrollLog = ScrollView(this).apply {
