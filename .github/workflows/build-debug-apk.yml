@@ -19,26 +19,22 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Gradle 8.7
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.7'
+      - name: Install Gradle 8.7
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt/gradle-dist
+          ln -sf /opt/gradle-dist/gradle-8.7/bin/gradle /usr/local/bin/gradle
+          gradle --version
 
       - name: Build debug APK
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          set +e
           gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
           BUILD_EXIT=${PIPESTATUS[0]}
-          set -e
           if [ $BUILD_EXIT -ne 0 ]; then
             echo "## Build failure" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            grep -E "FAILURE|error:|Error |Exception|> Task|What went wrong|where:" /tmp/build.log | head -60 >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "### Last 80 lines" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -80 /tmp/build.log >> $GITHUB_STEP_SUMMARY
+            tail -120 /tmp/build.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
