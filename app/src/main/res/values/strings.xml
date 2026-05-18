@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">HUDDLD</string>
+    <string name="accessibility_description">HUDDLD reads visible Uber Driver screen text. It never taps or interacts with Uber Driver.</string>
+</resources>
