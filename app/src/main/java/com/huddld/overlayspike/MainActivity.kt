@@ -2,6 +2,7 @@ package com.huddld.overlayspike
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
@@ -68,7 +69,11 @@ class MainActivity : AppCompatActivity() {
             if (!Settings.canDrawOverlays(this)) {
                 appendLog("ERROR: grant overlay permission first")
             } else {
-                startForegroundService(Intent(this, OverlayService::class.java))
+                val svcIntent = Intent(this, OverlayService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    startForegroundService(svcIntent)
+                else
+                    startService(svcIntent)
                 appendLog("Overlay service started")
             }
         })

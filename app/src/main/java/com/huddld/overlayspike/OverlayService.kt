@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.MotionEvent
@@ -38,10 +39,16 @@ class OverlayService : Service() {
             setBackgroundColor(Color.parseColor("#CC6200EE"))
         }
 
+        @Suppress("DEPRECATION")
+        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+            WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
+
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
@@ -84,8 +91,10 @@ class OverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
-        val ch = NotificationChannel(CHANNEL, "HUDDLD Overlay", NotificationManager.IMPORTANCE_LOW)
-        getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val ch = NotificationChannel(CHANNEL, "HUDDLD Overlay", NotificationManager.IMPORTANCE_LOW)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
+        }
     }
 
     private fun buildNotification(): Notification =
