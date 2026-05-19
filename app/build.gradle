@@ -14,9 +14,17 @@ android {
         versionName '0.1.0'
     }
 
+    signingConfigs {
+        debug {
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+
     buildTypes {
         debug {
             debuggable true
+            signingConfig signingConfigs.debug
         }
     }
 
