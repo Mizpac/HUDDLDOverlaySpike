@@ -1,10 +1,8 @@
 import streamlit as st
 import anthropic
-import json
-from datetime import datetime
 from core.database import (
     get_pipeline_counts, get_all_niches, get_open_flags,
-    create_dream_session, save_dream_messages, get_dream_sessions,
+    get_connection, create_dream_session, save_dream_messages, get_dream_sessions,
     get_dream_session, stage_idea, get_staged_ideas, promote_idea_to_pipeline,
     create_niche,
 )
@@ -22,11 +20,7 @@ client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 # ── Build live context from database ─────────────────────────
 
-def build_context() -> str:
-    counts = get_pipeline_counts()
-    niches = get_all_niches()
-    flags = get_open_flags()
-
+def build_context(counts: dict, niches: list, flags: list) -> str:
     validated = [n for n in niches if n["status"] == "validated"]
     listed = [n for n in niches if n["status"] == "listed"]
     top_scored = sorted(
@@ -120,11 +114,12 @@ st.divider()
 
 left, right = st.columns([2, 1])
 
+counts = get_pipeline_counts()
+flags = get_open_flags()
+niches = get_all_niches()
+
 with right:
     st.markdown('<p class="noctis-section-header">Live Context</p>', unsafe_allow_html=True)
-    counts = get_pipeline_counts()
-    flags = get_open_flags()
-    niches = get_all_niches()
     validated_count = counts.get("validated", 0)
     listed_count = counts.get("listed", 0)
     top = sorted([n for n in niches if n["score"]], key=lambda x: x["score"], reverse=True)
@@ -151,7 +146,6 @@ with right:
     if not staged:
         st.caption("Ideas identified during this session will appear here.")
     else:
-        all_niches = get_all_niches()
         for idea in staged:
             st.markdown(f"""
             <div style='background:#2E4A6B; border-radius:6px; padding:10px;
@@ -173,7 +167,7 @@ with right:
                     st.rerun()
             with drop_col:
                 if st.button("Drop", key=f"drop_{idea['id']}"):
-                    with __import__("core.database", fromlist=["get_connection"]).get_connection() as conn:
+                    with get_connection() as conn:
                         conn.execute("UPDATE staged_ideas SET status='dropped' WHERE id=?", (idea["id"],))
                     st.rerun()
 
@@ -208,7 +202,7 @@ with left:
         messages.append({"role": "user", "content": user_input.strip()})
 
         with st.spinner("Thinking..."):
-            system_prompt = build_context()
+            system_prompt = build_context(counts, niches, flags)
             response = client.messages.create(
                 model=DREAM_LAB_MODEL,
                 max_tokens=DREAM_LAB_MAX_TOKENS,
